@@ -2,6 +2,8 @@ import { randomUUID, createCipheriv, createDecipheriv } from "crypto";
 import bcrypt from "bcryptjs";
 import { pool } from "./db.js";
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 // Ensure we have a 32 byte key for AES-256
 const ENCRYPTION_KEY = process.env.JWT_SECRET 
   ? Buffer.from(process.env.JWT_SECRET.padEnd(32, '0').slice(0, 32))
@@ -26,8 +28,9 @@ function decryptText(text: string) {
 }
 
 // Helper to convert snake_case to camelCase
-function toCamel(obj: any) {
+function toCamel(obj: any): any {
   if (obj === null || typeof obj !== "object") return obj;
+  if (obj instanceof Date) return obj;
   if (Array.isArray(obj)) return obj.map(toCamel);
   
   const camelObj: any = {};
@@ -266,7 +269,7 @@ export class PostgresDB {
     
     try {
       let baseUrls = [];
-      let originalUrl = selectedServer.panelUrl.trim();
+      let originalUrl = selectedServer.panelUrl.trim().replace(/[:\/]+$/, '');
       
       if (!originalUrl.startsWith("http://") && !originalUrl.startsWith("https://")) {
         baseUrls = [`http://${originalUrl}`, `https://${originalUrl}`];
@@ -301,6 +304,10 @@ export class PostgresDB {
           });
           baseUrl = url;
           fetchError = null;
+          
+          if (!loginRes.ok) {
+            console.error(`[X-UI Login] URL: ${loginUrl}, Status: ${loginRes.status}`);
+          }
           break;
         } catch (e: any) {
           fetchError = e;
@@ -312,7 +319,7 @@ export class PostgresDB {
         if (msg === "fetch failed" || msg.includes("fetch failed") || msg.includes("ECONNREFUSED")) {
             msg = "تعذر الوصول إلى اللوحة. تحقق من صحة عنوان السيرفر والمنفذ.";
         }
-        throw new Error(`تعذر الاتصال باللوحة: \${msg}`);
+        throw new Error(`تعذر الاتصال باللوحة: ${msg}`);
       }
 
       if (!loginRes) throw new Error("فشل غير متوقع أثناء محاولة تسجيل الدخول");
@@ -321,27 +328,30 @@ export class PostgresDB {
       let respText = "";
       try {
          respText = await loginRes.text();
+         console.log(`[X-UI Login Response] ${respText.slice(0, 100)}`);
          if (respText) loginData = JSON.parse(respText);
-      } catch (e) {}
+      } catch (e) {
+         console.error(`[X-UI Login Error Parsing]`, e);
+      }
 
       if (!loginRes.ok || (loginData && !loginData.success)) {
         let errDesc = loginData?.msg || respText.slice(0, 50) || "بيانات غير صحيحة";
-        throw new Error(`تعذر الدخول (\${baseUrl}): \${errDesc}`);
+        throw new Error(`تعذر الدخول (${baseUrl}): ${errDesc}`);
       }
 
       const rawCookies = loginRes.headers.get('set-cookie');
       if (!rawCookies) throw new Error("لم يتم استلام جلسة من لوحة السيرفر");
       
       let cookies = rawCookies;
-      const sessionMatch = rawCookies.match(/session=([^;]+)/);
+      const sessionMatch = rawCookies.match(/(session|3x-ui)=([^;]+)/);
       if (sessionMatch) {
-         cookies = `session=\${sessionMatch[1]}`;
+         cookies = `${sessionMatch[1]}=${sessionMatch[2]}`;
       } else {
          cookies = rawCookies.split(';')[0];
       }
 
-      const getInboundUrl = `\${baseUrl.replace(/\\/$/, '')}/panel/api/inbounds/get/\${selectedServer.inboundId || 1}`;
-      finalUrl = `vless://\${uuid}@\${selectedServer.ip}:\${selectedServer.port}?type=tcp&security=none#\${newUsername}`;
+      const getInboundUrl = `${baseUrl.replace(/\/$/, '')}/panel/api/inbounds/get/${selectedServer.inboundId || 1}`;
+      finalUrl = `vless://${uuid}@${selectedServer.ip}:${selectedServer.port}?type=tcp&security=none#${newUsername}`;
       let outboundFlow = "";
       let existingClients: any[] = [];
       
@@ -356,18 +366,21 @@ export class PostgresDB {
            if (inboundData && inboundData.success && inboundData.obj) {
               const obj = inboundData.obj;
               try {
-                  const inboundSettings = JSON.parse(obj.settings || "{}");
+                  const inboundSettings = typeof obj.settings === 'string' ? JSON.parse(obj.settings || "{}") : (obj.settings || {});
                   existingClients = inboundSettings.clients || [];
               } catch (e) {}
 
               const protocol = obj.protocol;
               const port = obj.port;
-              const stream = JSON.parse(obj.streamSettings);
+              let stream: any = {};
+              try {
+                  stream = typeof obj.streamSettings === 'string' ? JSON.parse(obj.streamSettings || "{}") : (obj.streamSettings || {});
+              } catch(e) {}
               
               const net = stream.network || "tcp";
               const security = stream.security || "none";
               
-              let link = `\${protocol}://\${uuid}@\${selectedServer.ip}:\${port}?type=\${net}&security=\${security}`;
+              let link = `${protocol}://${uuid}@${selectedServer.ip}:${port}?type=${net}&security=${security}`;
               
               let sni = "";
               if (security === "tls") {
@@ -375,50 +388,50 @@ export class PostgresDB {
                  const fp = stream.tlsSettings?.fingerprint || "chrome";
                  const alpn = stream.tlsSettings?.alpn ? (Array.isArray(stream.tlsSettings.alpn) ? stream.tlsSettings.alpn.join(",") : stream.tlsSettings.alpn) : "";
                  if (sni) {
-                     link += `&sni=\${encodeURIComponent(sni)}`;
-                     if (net === "tcp") link += `&host=\${encodeURIComponent(sni)}`;
+                     link += `&sni=${encodeURIComponent(sni)}`;
+                     if (net === "tcp") link += `&host=${encodeURIComponent(sni)}`;
                  }
-                 if (fp) link += `&fp=\${fp}`;
-                 if (alpn) link += `&alpn=\${encodeURIComponent(alpn)}`;
+                 if (fp) link += `&fp=${fp}`;
+                 if (alpn) link += `&alpn=${encodeURIComponent(alpn)}`;
               } else if (security === "reality") {
                  sni = stream.realitySettings?.serverNames?.[0] || stream.realitySettings?.serverName || stream.realitySettings?.settings?.serverName || "";
                  const pbk = stream.realitySettings?.publicKey || "";
                  const fp = stream.realitySettings?.fingerprint || "chrome";
                  const sid = stream.realitySettings?.shortIds?.[0] || "";
                  const spx = stream.realitySettings?.spiderX || "";
-                 if (sni) link += `&sni=\${encodeURIComponent(sni)}`;
-                 if (pbk) link += `&pbk=\${pbk}`;
-                 if (fp) link += `&fp=\${fp}`;
-                 if (sid) link += `&sid=\${sid}`;
-                 if (spx) link += `&spx=\${encodeURIComponent(spx)}`;
+                 if (sni) link += `&sni=${encodeURIComponent(sni)}`;
+                 if (pbk) link += `&pbk=${pbk}`;
+                 if (fp) link += `&fp=${fp}`;
+                 if (sid) link += `&sid=${sid}`;
+                 if (spx) link += `&spx=${encodeURIComponent(spx)}`;
               }
 
               if (net === "ws") {
                  const path = stream.wsSettings?.path || "/";
                  const host = stream.wsSettings?.headers?.Host || stream.wsSettings?.headers?.host || "";
-                 if (path) link += `&path=\${encodeURIComponent(path)}`;
-                 if (host) link += `&host=\${encodeURIComponent(host)}`;
+                 if (path) link += `&path=${encodeURIComponent(path)}`;
+                 if (host) link += `&host=${encodeURIComponent(host)}`;
               } else if (net === "tcp") {
                  const type = stream.tcpSettings?.header?.type || "none";
                  if (type === "http") {
                     link += `&headerType=http`;
                     const host = stream.tcpSettings?.header?.request?.headers?.Host?.[0] || stream.tcpSettings?.header?.request?.headers?.host?.[0] || "";
-                    if (host) link += `&host=\${encodeURIComponent(host)}`;
+                    if (host) link += `&host=${encodeURIComponent(host)}`;
                     const path = stream.tcpSettings?.header?.request?.path?.[0] || "";
-                    if (path) link += `&path=\${encodeURIComponent(path)}`;
+                    if (path) link += `&path=${encodeURIComponent(path)}`;
                  }
               } else if (net === "grpc") {
                  const serviceName = stream.grpcSettings?.serviceName || "";
                  const multiMode = stream.grpcSettings?.multiMode ? "multi" : "gun";
-                 if (serviceName) link += `&serviceName=\${encodeURIComponent(serviceName)}`;
-                 link += `&mode=\${multiMode}`;
+                 if (serviceName) link += `&serviceName=${encodeURIComponent(serviceName)}`;
+                 link += `&mode=${multiMode}`;
               }
 
               if (protocol === "vless" && (security === "tls" || security === "reality")) {
                   outboundFlow = "";
               }
 
-              link += `#\${encodeURIComponent(newUsername)}`;
+              link += `#${encodeURIComponent(newUsername)}`;
               finalUrl = link;
            }
         }
@@ -429,7 +442,7 @@ export class PostgresDB {
       const isDuplicate = existingClients.some((c: any) => c.id === uuid || c.email === newUsername);
       if (isDuplicate) throw new Error("UUID أو اسم المستخدم موجود مسبقاً في اللوحة. حاول مرة أخرى.");
 
-      const addClientUrl = `\${baseUrl.replace(/\\/$/, '')}/panel/api/inbounds/addClient`;
+      const addClientUrl = `${baseUrl.replace(/\/$/, '')}/panel/api/inbounds/addClient`;
       
       const clientConfig = {
         id: uuid,
@@ -453,7 +466,7 @@ export class PostgresDB {
       try {
           const addRes = await fetch(addClientUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Cookie': cookies },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Cookie': cookies },
             body: JSON.stringify({
               id: selectedServer.inboundId || 1,
               settings: JSON.stringify(settings)
@@ -476,6 +489,7 @@ export class PostgresDB {
       }
 
       if (!addSuccess) {
+         console.error("[X-UI Add Client error] Msg from panel:", addErrorMsg);
          try {
              const checkRes = await fetch(getInboundUrl, {
                method: 'GET',
@@ -502,7 +516,7 @@ export class PostgresDB {
        if (errorMessage === "fetch failed" || errorMessage.includes("fetch failed") || errorMessage.includes("ECONNREFUSED")) {
           errorMessage = "تعذر الوصول إلى لوحة السيرفر. يرجى التأكد من صحة رابط السيرفر وحالة اللوحة.";
        }
-       throw new Error(`تعذر الاتصال بالسيرفر 3X-UI: \${errorMessage}`);
+       throw new Error(`تعذر الاتصال بالسيرفر 3X-UI: ${errorMessage}`);
     }
 
     const newUser = {
@@ -563,7 +577,7 @@ export class PostgresDB {
     if (!server) return [];
     try {
       let baseUrls = [];
-      let originalUrl = server.panelUrl.trim();
+      let originalUrl = server.panelUrl.trim().replace(/[:\/]+$/, '');
       
       if (!originalUrl.startsWith("http://") && !originalUrl.startsWith("https://")) {
         baseUrls = [`http://${originalUrl}`, `https://${originalUrl}`];
@@ -594,6 +608,7 @@ export class PostgresDB {
               password: decryptedPanelPass
             })
           });
+          if (!loginRes.ok) console.error(`[X-UI Onlines Login] URL: ${loginUrl}, Status: ${loginRes.status}`);
           if (loginRes.ok) {
             baseUrl = url;
             break;
@@ -611,10 +626,10 @@ export class PostgresDB {
             cookieString = setCookie.split(';')[0];
         }
 
-        const onlinesUrl = `\${baseUrl.replace(/\\/$/, '')}/panel/api/inbounds/onlines`;
+        const onlinesUrl = `${baseUrl.replace(/\/$/, '')}/panel/api/inbounds/onlines`;
         const onlinesRes = await fetch(onlinesUrl, {
           method: 'POST',
-          headers: { 'Cookie': cookieString }
+          headers: { 'Cookie': cookieString, 'Accept': 'application/json', 'Content-Type': 'application/json' }
         });
         if (onlinesRes.ok) {
           const jsonData = await onlinesRes.json();
