@@ -3,16 +3,36 @@ import path from "path";
 import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import apiRouter from "./server/api.js";
+import { initDb } from "./server/db.js";
 
 async function startServer() {
-  const app = express();
-  const PORT = process.env.PORT || 8080;
+  try {
+    await initDb();
+    console.log("Database initialized successfully");
+  } catch (err) {
+    console.error("Failed to initialize database:", err);
+  }
 
+  const app = express();
+  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+
+  app.set("trust proxy", 1);
   app.use(cors());
   app.use(express.json());
 
   // API Routes
   app.use("/api", apiRouter);
+
+  // Catch-all for API 404s
+  app.use("/api", (req, res) => {
+    res.status(404).json({ error: "API endpoint not found" });
+  });
+
+  // Global API Error handler
+  app.use("/api", (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("API Error Middleware caught:", err);
+    res.status(500).json({ error: "Internal Server Error", details: err.message || "Unknown error" });
+  });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

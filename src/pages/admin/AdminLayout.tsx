@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, Server, Users, LogOut, Menu, X, Settings } from 'lucide-react';
+import { LayoutDashboard, Server, Users, LogOut, Menu, X, Settings, ShieldCheck } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import ThemeSwitcher from '../../components/ThemeSwitcher';
 
@@ -14,8 +14,26 @@ export default function AdminLayout() {
     { name: 'لوحة التحكم', path: '/admin', icon: LayoutDashboard },
     { name: 'السيرفرات', path: '/admin/servers', icon: Server },
     { name: 'الموزعين (العملاء)', path: '/admin/clients', icon: Users },
+    { name: 'سجلات النظام', path: '/admin/logs', icon: ShieldCheck },
     { name: 'إعدادات الحساب', path: '/admin/settings', icon: Settings },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ forceAll: false })
+      });
+    } catch(e) {
+      console.error(e);
+    } finally {
+      logout();
+    }
+  };
 
   return (
     <div className="flex bg-bg-base min-h-screen lg:flex-row flex-col">
@@ -94,7 +112,7 @@ export default function AdminLayout() {
                  </div>
               </div>
               <button 
-                onClick={logout}
+                onClick={handleLogout}
                 className="flex items-center justify-center w-full gap-2 px-4 py-3 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors text-sm font-bold border border-red-500/20"
               >
                 <LogOut size={16} /> تسجيل الخروج

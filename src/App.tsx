@@ -13,6 +13,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminServers from './pages/admin/AdminServers';
 import AdminClients from './pages/admin/AdminClients';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminLogs from './pages/admin/AdminLogs';
 import ClientDashboard from './pages/client/ClientDashboard';
 
 const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode; allowedRole?: 'admin' | 'client' }) => {
@@ -38,6 +39,7 @@ export default function App() {
             <Route index element={<AdminDashboard />} />
             <Route path="servers" element={<AdminServers />} />
             <Route path="clients" element={<AdminClients />} />
+            <Route path="logs" element={<AdminLogs />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
           

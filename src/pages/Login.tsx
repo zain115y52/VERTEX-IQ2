@@ -36,23 +36,23 @@ export default function Login() {
       <div className="absolute top-0 w-full h-1/2 bg-gradient-to-b from-accent/10 to-transparent"></div>
       
       {/* Header Info */}
-      <div className="hidden sm:flex absolute top-6 right-6 lg:right-10 items-center gap-3 bg-bg-card border border-border-dark px-4 py-2 rounded-full shadow-none">
-        <div className="bg-accent/20 text-accent rounded-full w-8 h-8 flex items-center justify-center">
-          <Users size={18} />
+      <div className="flex absolute top-4 right-1 sm:top-6 sm:right-6 lg:right-10 items-center gap-2 sm:gap-3 bg-bg-card border border-border-dark px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-none scale-[0.80] sm:scale-100 origin-top-right z-20">
+        <div className="bg-accent/20 text-accent rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center shrink-0">
+          <Users size={16} className="sm:w-[18px] sm:h-[18px]" />
         </div>
-        <div>
-          <p className="text-xs text-text-secondary">اسم المالك</p>
-          <p className="font-bold text-text-primary text-sm">Zain Al-Yassiri</p>
+        <div className="whitespace-nowrap">
+          <p className="text-[10px] sm:text-xs text-text-secondary">اسم المالك</p>
+          <p className="font-bold text-text-primary text-xs sm:text-sm">Zain Al-Yassiri</p>
         </div>
       </div>
       
-      <div className="hidden sm:flex absolute top-6 left-6 lg:left-10 items-center gap-3 bg-bg-card border border-border-dark px-4 py-2 rounded-full shadow-none">
-        <div className="text-right">
-          <p className="text-xs text-text-secondary">رقم التواصل</p>
-          <p className="font-bold text-text-primary text-sm font-mono" dir="ltr">07829141115</p>
+      <div className="flex absolute top-4 left-1 sm:top-6 sm:left-6 lg:left-10 items-center gap-2 sm:gap-3 bg-bg-card border border-border-dark px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-none scale-[0.80] sm:scale-100 origin-top-left z-20">
+        <div className="text-right whitespace-nowrap">
+          <p className="text-[10px] sm:text-xs text-text-secondary">رقم التواصل</p>
+          <p className="font-bold text-text-primary text-xs sm:text-sm font-mono" dir="ltr">07829141115</p>
         </div>
-        <div className="bg-accent/10 text-accent border border-accent/20 rounded-full w-8 h-8 flex items-center justify-center">
-          <Wifi size={18} />
+        <div className="bg-accent/10 text-accent border border-accent/20 rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center shrink-0">
+          <Wifi size={16} className="sm:w-[18px] sm:h-[18px]" />
         </div>
       </div>
 

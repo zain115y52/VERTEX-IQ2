@@ -56,6 +56,23 @@ export default function ClientDashboard() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ forceAll: false })
+      });
+    } catch(e) {
+      console.error(e);
+    } finally {
+      logout();
+    }
+  };
+
   const handleGenerate = async () => {
     setIsGenerating(true);
     setGenerateError('');
@@ -125,7 +142,7 @@ export default function ClientDashboard() {
                  <span className="text-xs sm:text-sm font-bold text-text-primary font-mono truncate max-w-[100px] sm:max-w-none">{user?.username}</span>
               </div>
               <button 
-                onClick={logout}
+                onClick={handleLogout}
                 className="text-text-secondary hover:text-text-primary transition-colors p-1"
                 title="تسجيل الخروج"
               >
