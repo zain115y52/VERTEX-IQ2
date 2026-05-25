@@ -229,7 +229,9 @@ export default function ClientDashboard() {
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-border-dark bg-bg-card">
-                     {data.usersList.map((u: any, idx: number) => (
+                     {(data?.usersList || []).map((u: any, idx: number) => {
+                       const usageGbNum = Number(u.usageGb) || 0;
+                       return (
                        <tr key={idx} className="hover:bg-white/5 transition-colors group">
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-text-primary text-xs sm:text-[13px]" dir="ltr">
                              <div className="flex flex-col gap-1">
@@ -311,10 +313,10 @@ export default function ClientDashboard() {
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-center font-mono text-xs sm:text-[13px]">
                              <div className="flex flex-col gap-1 items-center">
                                <span className="text-text-primary font-bold">
-                                  {u.usageGb} GB
+                                  {usageGbNum} GB
                                </span>
                                <span className="text-[10px] text-text-secondary/70">
-                                  {(u.usageGb < 1 ? (u.usageGb * 1024).toFixed(1) + ' MB' : u.usageGb.toFixed(2) + ' GB')}
+                                  {(usageGbNum < 1 ? (usageGbNum * 1024).toFixed(1) + ' MB' : usageGbNum.toFixed(2) + ' GB')}
                                </span>
                              </div>
                           </td>
@@ -334,7 +336,7 @@ export default function ClientDashboard() {
                                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500"></div>
                                        Disabled
                                     </span>
-                                 ) : u.usageGb === 0 ? (
+                                 ) : usageGbNum === 0 ? (
                                     <span className="inline-flex items-center gap-1.5 text-blue-400 font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
                                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-400"></div>
                                        New
@@ -370,8 +372,9 @@ export default function ClientDashboard() {
                                  </label>
                           </td>
                        </tr>
-                     ))}
-                     {data.usersList.length === 0 && (
+                     );
+                     })}
+                     {(data?.usersList || []).length === 0 && (
                         <tr>
                           <td colSpan={7} className="px-4 sm:px-6 py-8 sm:py-12 text-center text-text-secondary text-sm">
                              لا يوجد مستخدمين مسجلين حالياً.
