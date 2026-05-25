@@ -1,3 +1,0 @@
-async generateVpnUser
-async fetchServerOnlines
-async getClientDashboard
