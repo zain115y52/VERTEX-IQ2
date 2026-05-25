@@ -373,7 +373,7 @@ export default function ClientDashboard() {
                      ))}
                      {data.usersList.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="px-4 sm:px-6 py-8 sm:py-12 text-center text-text-secondary text-sm">
+                          <td colSpan={7} className="px-4 sm:px-6 py-8 sm:py-12 text-center text-text-secondary text-sm">
                              لا يوجد مستخدمين مسجلين حالياً.
                           </td>
                         </tr>
