@@ -95,10 +95,11 @@ export async function initDb() {
     if (parseInt(res.rows[0].count) === 0) {
       console.log("Inserting default admin user...");
       const bcrypt = await import("bcryptjs");
-      const adminHash = bcrypt.default.hashSync("admin", 10);
+      const crypto = await import("crypto");
+      const adminHash = bcrypt.default ? bcrypt.default.hashSync("admin", 10) : bcrypt.hashSync("admin", 10);
       await pool.query(
         "INSERT INTO users (id, username, password_hash, role) VALUES ($1, $2, $3, $4)",
-        ["admin-1", "admin", adminHash, "admin"]
+        [crypto.randomUUID(), "admin", adminHash, "admin"]
       );
       console.log("Default admin user created successfully.");
     }
