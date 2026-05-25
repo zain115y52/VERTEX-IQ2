@@ -299,4 +299,16 @@ router.put("/client/users/:id/display-name", authenticate, async (req: any, res:
   }
 });
 
+router.put("/client/users/:id/toggle", authenticate, async (req: any, res: any) => {
+  if (req.user.role !== "client") return res.status(403).json({ error: "Forbidden" });
+  try {
+    const { enable } = req.body;
+    const updated = await db.updateVpnUserStatus(req.user.id, req.params.id, Boolean(enable));
+    await db.createLog('TOGGLE_USER_STATUS', req.user.id, req.user.username, req.ip || '', `Toggled VPN user ${req.params.id} to ${enable}`);
+    res.json(updated);
+  } catch(err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 export default router;

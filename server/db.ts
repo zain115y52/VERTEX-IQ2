@@ -76,9 +76,11 @@ export async function initDb() {
         days INTEGER NOT NULL,
         usage_gb INTEGER NOT NULL DEFAULT 0,
         is_online BOOLEAN DEFAULT FALSE,
+        is_active BOOLEAN DEFAULT TRUE,
         vless_url TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE vpn_users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
       CREATE TABLE IF NOT EXISTS security_logs (
         id UUID PRIMARY KEY,
         action VARCHAR(255) NOT NULL,

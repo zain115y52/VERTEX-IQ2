@@ -225,90 +225,98 @@ export default function ClientDashboard() {
                         <th className="px-4 sm:px-6 py-3 sm:py-4 text-center border-b border-border-dark">المتبقي</th>
                         <th className="px-4 sm:px-6 py-3 sm:py-4 text-center border-b border-border-dark">الأيام المتبقية</th>
                         <th className="px-4 sm:px-6 py-3 sm:py-4 text-center border-b border-border-dark">الحالة</th>
+                        <th className="px-4 sm:px-6 py-3 sm:py-4 text-center border-b border-border-dark">إيقاف / تشغيل</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-border-dark bg-bg-card">
                      {data.usersList.map((u: any, idx: number) => (
                        <tr key={idx} className="hover:bg-white/5 transition-colors group">
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-text-primary text-xs sm:text-[13px]" dir="ltr">
-                             <div className="flex items-center gap-2">
-                               <span className="font-mono text-text-secondary">{u.username}</span>
-                               {editingUserId === u.id ? (
-                                 <div className="flex items-center gap-1">
-                                   <input
-                                     type="text"
-                                     value={editDisplayName}
-                                     onChange={(e) => setEditDisplayName(e.target.value)}
-                                     className="bg-bg-base border border-border-dark text-text-primary text-xs px-2 py-1 rounded w-32 focus:outline-none focus:border-primary"
-                                     placeholder="تسمية (اختياري)"
-                                     autoFocus
-                                     onKeyDown={(e) => { if (e.key === 'Enter') handleSaveDisplayName(u.id); }}
-                                   />
-                                   <button 
-                                     onClick={() => handleSaveDisplayName(u.id)}
-                                     className="p-1 text-success hover:bg-success/20 rounded transition-colors"
-                                     title="حفظ"
-                                   >
-                                     <Save size={14} />
-                                   </button>
-                                   <button 
-                                     onClick={() => setEditingUserId(null)}
-                                     className="p-1 text-text-secondary hover:bg-white/10 rounded transition-colors"
-                                     title="إلغاء"
-                                   >
-                                     <X size={14} />
-                                   </button>
-                                 </div>
-                               ) : (
-                                 <div className="flex items-center gap-2">
-                                   {u.displayName && (
-                                     <span className="bg-bg-base border border-border-dark px-2 py-0.5 rounded text-primary font-bold text-[10px]">
-                                       {u.displayName}
-                                     </span>
-                                   )}
-                                   <button
-                                     onClick={() => {
-                                       setEditingUserId(u.id);
-                                       setEditDisplayName(u.displayName || "");
-                                     }}
-                                     className="p-1 text-text-secondary hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
-                                     title="تعديل اسم الزبون"
-                                   >
-                                     <Edit2 size={13} />
-                                   </button>
-                                   {u.v2rayLink && (
-                                     <>
-                                       <button
-                                         onClick={() => {
-                                           navigator.clipboard.writeText(u.v2rayLink);
-                                           setCopiedV2RayId(u.id);
-                                           setTimeout(() => setCopiedV2RayId(null), 2000);
-                                         }}
-                                         className="p-1 text-text-secondary hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
-                                         title="نسخ رابط V2Ray"
-                                       >
-                                         {copiedV2RayId === u.id ? <Check size={13} className="text-success" /> : <Copy size={13} />}
-                                       </button>
-                                       <button
-                                         onClick={() => {
-                                           setShowQrForLink(u.v2rayLink);
-                                         }}
-                                         className="p-1 text-text-secondary hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
-                                         title="عرض الباركود"
-                                       >
-                                         <QrCode size={13} />
-                                       </button>
-                                     </>
-                                   )}
-                                 </div>
-                               )}
+                             <div className="flex flex-col gap-1">
+                               <div className="flex items-center gap-2">
+                                 <span className="font-mono text-text-secondary">{u.username}</span>
+                                 {editingUserId === u.id ? (
+                                   <div className="flex items-center gap-1">
+                                     <input
+                                       type="text"
+                                       value={editDisplayName}
+                                       onChange={(e) => setEditDisplayName(e.target.value)}
+                                       className="bg-bg-base border border-border-dark text-text-primary text-xs px-2 py-1 rounded w-32 focus:outline-none focus:border-primary"
+                                       placeholder="تسمية (اختياري)"
+                                       autoFocus
+                                       onKeyDown={(e) => { if (e.key === 'Enter') handleSaveDisplayName(u.id); }}
+                                     />
+                                     <button 
+                                       onClick={() => handleSaveDisplayName(u.id)}
+                                       className="p-1 text-success hover:bg-success/20 rounded transition-colors"
+                                       title="حفظ"
+                                     >
+                                       <Save size={14} />
+                                     </button>
+                                     <button 
+                                       onClick={() => setEditingUserId(null)}
+                                       className="p-1 text-text-secondary hover:bg-white/10 rounded transition-colors"
+                                       title="إلغاء"
+                                     >
+                                       <X size={14} />
+                                     </button>
+                                   </div>
+                                 ) : (
+                                   <div className="flex items-center gap-2">
+                                     {u.displayName && (
+                                       <span className="bg-bg-base border border-border-dark px-2 py-0.5 rounded text-primary font-bold text-[10px]">
+                                         {u.displayName}
+                                       </span>
+                                     )}
+                                     <button
+                                       onClick={() => {
+                                         setEditingUserId(u.id);
+                                         setEditDisplayName(u.displayName || "");
+                                       }}
+                                       className="p-1 text-text-secondary hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
+                                       title="تعديل اسم الزبون"
+                                     >
+                                       <Edit2 size={13} />
+                                     </button>
+                                     {u.v2rayLink && (
+                                       <>
+                                         <button
+                                           onClick={() => {
+                                             navigator.clipboard.writeText(u.v2rayLink);
+                                             setCopiedV2RayId(u.id);
+                                             setTimeout(() => setCopiedV2RayId(null), 2000);
+                                           }}
+                                           className="p-1 text-text-secondary hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
+                                           title="نسخ رابط V2Ray"
+                                         >
+                                           {copiedV2RayId === u.id ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                                         </button>
+                                         <button
+                                           onClick={() => {
+                                             setShowQrForLink(u.v2rayLink);
+                                           }}
+                                           className="p-1 text-text-secondary hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
+                                           title="عرض الباركود"
+                                         >
+                                           <QrCode size={13} />
+                                         </button>
+                                       </>
+                                     )}
+                                   </div>
+                                 )}
+                               </div>
                              </div>
                           </td>
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-text-secondary text-[11px] sm:text-xs">{u.serverName}</td>
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-center font-mono text-xs sm:text-[13px]">
-                             <span className="text-text-primary font-bold">
-                                {u.usageGb} GB
-                             </span>
+                             <div className="flex flex-col gap-1 items-center">
+                               <span className="text-text-primary font-bold">
+                                  {u.usageGb} GB
+                               </span>
+                               <span className="text-[10px] text-text-secondary/70">
+                                  {(u.usageGb < 1 ? (u.usageGb * 1024).toFixed(1) + ' MB' : u.usageGb.toFixed(2) + ' GB')}
+                               </span>
+                             </div>
                           </td>
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-center font-mono text-xs sm:text-[13px]">
                              <span className="text-success font-bold">
@@ -321,17 +329,45 @@ export default function ClientDashboard() {
                              </div>
                           </td>
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-center">
-                             {u.isOnline ? (
-                                <span className="inline-flex items-center gap-1.5 text-success font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
-                                   <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-success shadow-[0_0_8px_var(--color-success)]"></div>
-                                   Online
-                                </span>
-                             ) : (
-                                <span className="inline-flex items-center gap-1.5 text-text-secondary font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
-                                   <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-slate-500"></div>
-                                   Offline
-                                </span>
-                             )}
+                                 { u.isActive === false ? (
+                                    <span className="inline-flex items-center gap-1.5 text-red-500 font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
+                                       <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500"></div>
+                                       Disabled
+                                    </span>
+                                 ) : u.usageGb === 0 ? (
+                                    <span className="inline-flex items-center gap-1.5 text-blue-400 font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
+                                       <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-400"></div>
+                                       New
+                                    </span>
+                                 ) : u.isOnline ? (
+                                    <span className="inline-flex items-center gap-1.5 text-success font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
+                                       <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-success shadow-[0_0_8px_var(--color-success)]"></div>
+                                       Active (Online)
+                                    </span>
+                                 ) : (
+                                    <span className="inline-flex items-center gap-1.5 text-text-secondary font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
+                                       <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-slate-500"></div>
+                                       Active (Offline)
+                                    </span>
+                                 )}
+                          </td>
+                          <td className="px-4 sm:px-6 py-3 sm:py-4 text-center">
+                                 <label className="relative inline-flex items-center cursor-pointer">
+                                   <input 
+                                     type="checkbox" 
+                                     className="sr-only peer" 
+                                     checked={u.isActive !== false} 
+                                     onChange={async (e) => {
+                                        const newVal = e.target.checked;
+                                        setData((prev: any) => ({ ...prev, usersList: prev.usersList.map((ul: any) => ul.id === u.id ? { ...ul, isActive: newVal } : ul) }));
+                                        try {
+                                           await fetch(`/api/client/users/${u.id}/toggle`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ enable: newVal }) });
+                                           fetchDashboard();
+                                        } catch(err) {}
+                                     }} 
+                                   />
+                                   <div className="w-8 h-4 bg-border-dark peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-success"></div>
+                                 </label>
                           </td>
                        </tr>
                      ))}

@@ -534,16 +534,101 @@ export class PostgresDB {
         days: 30,
         usageGb: 0, 
         isOnline: false,
+        isActive: true,
         vlessUrl: finalUrl
     };
 
     await pool.query(
-      `INSERT INTO vpn_users (id, server_id, client_id, username, display_name, quota_gb, days, usage_gb, is_online, vless_url, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
-      [newUser.id, newUser.serverId, newUser.clientId, newUser.username, newUser.displayName, newUser.quotaGb, newUser.days, newUser.usageGb, newUser.isOnline, newUser.vlessUrl]
+      `INSERT INTO vpn_users (id, server_id, client_id, username, display_name, quota_gb, days, usage_gb, is_online, is_active, vless_url, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())`,
+      [newUser.id, newUser.serverId, newUser.clientId, newUser.username, newUser.displayName, newUser.quotaGb, newUser.days, newUser.usageGb, newUser.isOnline, newUser.isActive, newUser.vlessUrl]
     );
 
     return toCamel(newUser);
+  }
+
+  async updateVpnUserStatus(clientId: string, vpnUserId: string, enable: boolean) {
+    const res = await pool.query("SELECT * FROM vpn_users WHERE id = $1 AND client_id = $2", [vpnUserId, clientId]);
+    if (res.rows.length === 0) throw new Error("المستخدم غير موجود أو لا تملك الصلاحية");
+    const vpnUser = toCamel(res.rows[0]);
+
+    const serverRes = await pool.query("SELECT * FROM servers WHERE id = $1", [vpnUser.serverId]);
+    if (serverRes.rows.length === 0) throw new Error("سيرفر المستخدم غير موجود");
+    const selectedServer = toCamel(serverRes.rows[0]);
+
+    let baseUrls = [];
+    let originalUrl = selectedServer.panelUrl.trim().replace(/[:\/]+$/, '');
+    if (!originalUrl.startsWith("http://") && !originalUrl.startsWith("https://")) {
+      baseUrls = [`http://${originalUrl}`, `https://${originalUrl}`];
+    } else {
+      baseUrls = [originalUrl];
+    }
+
+    let loginRes: Response | null = null;
+    let baseUrl = "";
+    let decryptedPanelPass = "";
+    if (selectedServer.panelPasswordEnc) {
+       try { decryptedPanelPass = decryptText(selectedServer.panelPasswordEnc); } catch(e) {}
+    }
+
+    for (const url of baseUrls) {
+      try {
+        const loginUrl = `${url.replace(/\/$/, '')}/login`;
+        loginRes = await fetch(loginUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: selectedServer.username, password: decryptedPanelPass })
+        });
+        if (loginRes.ok) { baseUrl = url; break; }
+      } catch (e) {}
+    }
+
+    if (!loginRes || !baseUrl) throw new Error("تعذر الاتصال بلوحة السيرفر");
+
+    let setCookie = loginRes.headers.get("set-cookie");
+    let cookiesArray = loginRes.headers.getSetCookie ? loginRes.headers.getSetCookie() : [];
+    let cookies = "";
+    if (cookiesArray.length > 0) {
+        cookies = cookiesArray.map((c: string) => c.split(';')[0]).join('; ');
+    } else if (setCookie) {
+        cookies = setCookie.split(';')[0];
+    }
+
+    const getInboundUrl = `${baseUrl.replace(/\/$/, '')}/panel/api/inbounds/get/${selectedServer.inboundId || 1}`;
+    const getRes = await fetch(getInboundUrl, { method: 'GET', headers: { 'Cookie': cookies, 'Accept': 'application/json' } });
+    if (!getRes.ok) throw new Error("فشل جلب إعدادات اللوحة");
+    
+    const getData = await getRes.json();
+    if (!getData.success || !getData.obj) throw new Error("لم يتم العثور على البورت في اللوحة");
+
+    let inboundSettings = typeof getData.obj.settings === 'string' ? JSON.parse(getData.obj.settings || "{}") : (getData.obj.settings || {});
+    let clients = inboundSettings.clients || [];
+    const clientIndex = clients.findIndex((c: any) => c.id === vpnUser.id || c.email === vpnUser.username);
+    if (clientIndex === -1) throw new Error("المستخدم غير موجود في لوحة السيرفر");
+
+    const targetClient = clients[clientIndex];
+    targetClient.enable = enable;
+    
+    const updateClientUrl = `${baseUrl.replace(/\/$/, '')}/panel/api/inbounds/updateClient/${targetClient.id}`;
+    
+    const updateRes = await fetch(updateClientUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cookie': cookies },
+      body: JSON.stringify({
+        id: selectedServer.inboundId || 1,
+        settings: JSON.stringify({ clients: [targetClient] })
+      })
+    });
+
+    if (!updateRes.ok) {
+       const errBody = await updateRes.text();
+       throw new Error("فشل تفعيل/إيقاف المستخدم في اللوحة: " + errBody.slice(0, 50));
+    }
+
+    await pool.query("UPDATE vpn_users SET is_active = $1 WHERE id = $2", [enable, vpnUserId]);
+    
+    const updated = await pool.query("SELECT * FROM vpn_users WHERE id = $1", [vpnUserId]);
+    return toCamel(updated.rows[0]);
   }
 
   async updateVpnUserDisplayName(clientId: string, vpnUserId: string, displayName: string) {
@@ -576,6 +661,98 @@ export class PostgresDB {
         [limit]
     );
     return toCamel(res.rows);
+  }
+
+  async fetchServerClientStats(server: any, inboundId: number) {
+    if (!server) return { onlines: [], clientStats: {} };
+    try {
+      let baseUrls = [];
+      let originalUrl = server.panelUrl.trim().replace(/[:\/]+$/, '');
+      if (!originalUrl.startsWith("http://") && !originalUrl.startsWith("https://")) {
+        baseUrls = [`http://${originalUrl}`, `https://${originalUrl}`];
+      } else {
+        baseUrls = [originalUrl];
+      }
+      
+      let loginRes: Response | null = null;
+      let baseUrl = "";
+      
+      let decryptedPanelPass = "";
+      if (server.panelPasswordEnc) {
+         try {
+            decryptedPanelPass = decryptText(server.panelPasswordEnc);
+         } catch(e) {}
+      }
+
+      for (const url of baseUrls) {
+        try {
+          const loginUrl = `${url.replace(/\/$/, '')}/login`;
+          loginRes = await fetch(loginUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: server.username,
+              password: decryptedPanelPass
+            })
+          });
+          if (loginRes.ok) {
+            baseUrl = url;
+            break;
+          }
+        } catch (e) {}
+      }
+      
+      if (loginRes && baseUrl) {
+        let setCookie = loginRes.headers.get("set-cookie");
+        let cookiesArray = loginRes.headers.getSetCookie ? loginRes.headers.getSetCookie() : [];
+        let cookieString = "";
+        if (cookiesArray.length > 0) {
+            cookieString = cookiesArray.map((c: string) => c.split(';')[0]).join('; ');
+        } else if (setCookie) {
+            cookieString = setCookie.split(';')[0];
+        }
+
+        let onlines: string[] = [];
+        let clientStats: any = {};
+
+        try {
+            const onlinesUrl = `${baseUrl.replace(/\/$/, '')}/panel/api/inbounds/onlines`;
+            const onlinesRes = await fetch(onlinesUrl, {
+              method: 'POST',
+              headers: { 'Cookie': cookieString, 'Accept': 'application/json', 'Content-Type': 'application/json' }
+            });
+            if (onlinesRes.ok) {
+              const jsonData = await onlinesRes.json();
+              if (jsonData.success && Array.isArray(jsonData.obj)) onlines = jsonData.obj; 
+            }
+        } catch(e) {}
+
+        try {
+            const getInboundUrl = `${baseUrl.replace(/\/$/, '')}/panel/api/inbounds/get/${inboundId}`;
+            const inboundRes = await fetch(getInboundUrl, {
+              method: 'GET',
+              headers: { 'Cookie': cookieString, 'Accept': 'application/json' }
+            });
+            if (inboundRes.ok) {
+               const inboundData = await inboundRes.json();
+               if (inboundData && inboundData.success && inboundData.obj && Array.isArray(inboundData.obj.clientStats)) {
+                   inboundData.obj.clientStats.forEach((c: any) => {
+                       clientStats[c.email] = {
+                           up: c.up || 0,
+                           down: c.down || 0,
+                           total: c.total || 0,
+                           enable: c.enable,
+                           usageBytes: (c.up || 0) + (c.down || 0)
+                       };
+                   });
+               }
+            }
+        } catch(e) {}
+        
+        return { onlines, clientStats };
+      }
+    } catch(e) {}
+    return { onlines: [], clientStats: {} };
   }
 
   async fetchServerOnlines(server: any) {
@@ -657,8 +834,11 @@ export class PostgresDB {
     const users = vpnUsersRes.rows.map(toCamel);
     
     let onlineEmails: string[] = [];
+    let clientStats: any = {};
     if (assignedServer) {
-        onlineEmails = await this.fetchServerOnlines(assignedServer);
+        const stats = await this.fetchServerClientStats(assignedServer, assignedServer.inboundId || 1);
+        onlineEmails = stats.onlines;
+        clientStats = stats.clientStats;
     }
 
     const totalUsers = users.length;
@@ -667,11 +847,20 @@ export class PostgresDB {
     users.forEach(u => {
         u.isOnline = onlineEmails.includes(u.username);
         if (u.isOnline) computedOnlineUsers++;
+
+        const userStats = clientStats[u.username];
+        if (userStats) {
+            u.usageGb = parseFloat((userStats.usageBytes / (1024 * 1024 * 1024)).toFixed(2));
+            u.isActive = userStats.enable !== false; // handle nullish as true
+        } else {
+            // default if not found
+            u.isActive = u.isActive !== undefined ? u.isActive : true; 
+        }
     });
 
-    // Optionally update online status in DB in background
+    // Optionally update online status and usage in DB in background
     for (const u of users) {
-      pool.query("UPDATE vpn_users SET is_online = $1 WHERE id = $2", [u.isOnline, u.id]).catch(() => {});
+      pool.query("UPDATE vpn_users SET is_online = $1, usage_gb = $2, is_active = $3 WHERE id = $4", [u.isOnline, u.usageGb, u.isActive, u.id]).catch(() => {});
     }
 
     const totalUsage = users.reduce((acc: any, curr: any) => acc + curr.usageGb, 0);
@@ -699,6 +888,7 @@ export class PostgresDB {
             remainingGb: u.quotaGb - u.usageGb,
             daysRatio: "30 / 30",
             isOnline: u.isOnline,
+            isActive: u.isActive,
             serverName: assignedServer?.name || ""
         }))
     };
