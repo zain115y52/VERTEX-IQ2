@@ -2,7 +2,7 @@ import { Pool } from "pg";
 import { PostgresDB } from "./pgStore.js";
 
 // Make sure we have a DB_HOST, default to localhost if not found for local testing
-const dbHost = process.env.DB_HOST || "/cloudsql/VERTEX-IQ2:europe-west1:vertex-db";
+const dbHost = process.env.DB_HOST || "/cloudsql/vertex-iq2:us-east1:vertex-db";
 const dbPort = process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 5432;
 
 // Check if socket path is used for Cloud SQL
