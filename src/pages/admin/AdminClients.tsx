@@ -15,6 +15,9 @@ export default function AdminClients() {
   const [status, setStatus] = useState('نشط');
   const [errorMsg, setErrorMsg] = useState('');
 
+  const [editingLimitId, setEditingLimitId] = useState<string | null>(null);
+  const [editLimitValue, setEditLimitValue] = useState<number | ''>('');
+
   const [showPass, setShowPass] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -82,6 +85,29 @@ export default function AdminClients() {
     setDeleteId(null);
     fetchClients();
     fetchServers();
+  };
+
+  const handleSaveLimit = async (id: string) => {
+    if (editLimitValue === '' || editLimitValue < 0) {
+      alert("الرجاء إدخال قيمة صحيحة (أكبر من أو يساوي 0)");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/clients/${id}/limit`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ limit: editLimitValue })
+      });
+      if (res.ok) {
+        setEditingLimitId(null);
+        fetchClients();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'حدث خطأ');
+      }
+    } catch (e) {
+      alert("خطأ في الاتصال");
+    }
   };
 
   return (
@@ -199,8 +225,11 @@ export default function AdminClients() {
                          {client.status}
                        </span>
                      )}
-                     {client.limit && (
-                       <span className="text-[10px] text-text-secondary bg-bg-base border border-border-dark px-2 py-0.5 rounded-full font-mono">
+                     {client.limit !== undefined && (
+                       <span className="text-[10px] text-text-secondary bg-bg-base border border-border-dark px-2 py-0.5 rounded-full font-mono flex items-center gap-1 cursor-pointer hover:bg-bg-sidebar transition-colors" onClick={() => {
+                         setEditingLimitId(client.id);
+                         setEditLimitValue(client.limit);
+                       }}>
                          Limit: {client.limit}
                        </span>
                      )}
@@ -209,6 +238,19 @@ export default function AdminClients() {
             </div>
 
             <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+               {editingLimitId === client.id ? (
+                 <div className="flex items-center gap-2 mr-auto" dir="ltr">
+                   <input 
+                     type="number" 
+                     value={editLimitValue}
+                     onChange={e => setEditLimitValue(e.target.value ? Number(e.target.value) : '')}
+                     className="w-20 p-1.5 bg-bg-base border border-border-dark text-text-primary rounded-lg text-sm text-center outline-none focus:border-accent"
+                     min="0"
+                   />
+                   <button onClick={() => handleSaveLimit(client.id)} className="bg-accent text-bg-base px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-accent/90">حفظ</button>
+                   <button onClick={() => setEditingLimitId(null)} className="bg-bg-base border border-border-dark text-text-secondary px-3 py-1.5 rounded-lg text-xs font-bold hover:text-text-primary">إلغاء</button>
+                 </div>
+               ) : null}
                <button 
                  onClick={() => togglePassword(client.id)}
                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-bg-base hover:bg-bg-base/80 border border-border-dark text-text-primary rounded-lg text-sm font-bold transition-colors font-mono"

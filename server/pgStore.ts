@@ -130,6 +130,11 @@ export class PostgresDB {
     await pool.query("DELETE FROM users WHERE id = $1", [id]);
   }
 
+  async updateClientLimit(id: string, limit: number) {
+    if (limit < 0) throw new Error("لا يمكن أن يكون الحد أقل من صفر");
+    await pool.query('UPDATE users SET "limit" = $1 WHERE id = $2 AND role = $3', [limit, id, 'client']);
+  }
+
   async getClients() {
     const res = await pool.query(`
       SELECT u.id, u.username, u."limit", u.status, u.created_at as "createdAt",

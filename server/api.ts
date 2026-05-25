@@ -176,6 +176,20 @@ router.delete("/admin/clients/:id", authenticate, requireAdmin, async (req: any,
   }
 });
 
+router.put("/admin/clients/:id/limit", authenticate, requireAdmin, async (req: any, res: any) => {
+  const { limit } = req.body;
+  if (limit === undefined || limit < 0) {
+    return res.status(400).json({ error: "حد الموزع غير صحيح" });
+  }
+  try {
+    await db.updateClientLimit(req.params.id, Number(limit));
+    await db.createLog('UPDATE_CLIENT_LIMIT', req.user.id, req.user.username, req.ip || '', `Updated limit for client ${req.params.id} to ${limit}`);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.get("/admin/clients", authenticate, requireAdmin, async (req: any, res: any) => {
   try {
     res.json(await db.getClients());
