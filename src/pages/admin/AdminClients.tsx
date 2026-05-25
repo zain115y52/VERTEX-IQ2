@@ -18,11 +18,17 @@ export default function AdminClients() {
   const [editingLimitId, setEditingLimitId] = useState<string | null>(null);
   const [editLimitValue, setEditLimitValue] = useState<number | ''>('');
 
-  const [editingPasswordId, setEditingPasswordId] = useState<string | null>(null);
-  const [editPasswordValue, setEditPasswordValue] = useState('');
-
   const [showPass, setShowPass] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+
+  const togglePassword = (id: string) => {
+    setRevealedPasswords(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   const fetchClients = async () => {
     const res = await fetch('/api/admin/clients', { headers: { Authorization: `Bearer ${token}` } });
@@ -98,30 +104,6 @@ export default function AdminClients() {
       } else {
         const err = await res.json();
         alert(err.error || 'حدث خطأ');
-      }
-    } catch (e) {
-      alert("خطأ في الاتصال");
-    }
-  };
-
-  const handleSavePassword = async (id: string) => {
-    if (!editPasswordValue || editPasswordValue.trim().length < 6) {
-      alert("الرجاء إدخال كلمة مرور صالحة (6 أحرف على الأقل)");
-      return;
-    }
-    try {
-      const res = await fetch(`/api/admin/clients/${id}/password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ newPassword: editPasswordValue.trim() })
-      });
-      if (res.ok) {
-        setEditingPasswordId(null);
-        setEditPasswordValue('');
-        alert("تم تغيير كلمة المرور بنجاح");
-      } else {
-        const err = await res.json();
-        alert(err.error || 'حدث خطأ أثناء تغيير كلمة المرور');
       }
     } catch (e) {
       alert("خطأ في الاتصال");
@@ -269,29 +251,19 @@ export default function AdminClients() {
                    <button onClick={() => setEditingLimitId(null)} className="bg-bg-base border border-border-dark text-text-secondary px-3 py-1.5 rounded-lg text-xs font-bold hover:text-text-primary">إلغاء</button>
                  </div>
                ) : null}
-               {editingPasswordId === client.id ? (
-                 <div className="flex items-center gap-2" dir="ltr">
-                   <input 
-                     type="text" 
-                     placeholder="كلمة المرور الجديدة"
-                     value={editPasswordValue}
-                     onChange={e => setEditPasswordValue(e.target.value)}
-                     className="w-32 p-2 bg-bg-base border border-border-dark text-text-primary rounded-lg text-sm outline-none focus:border-accent"
-                   />
-                   <button onClick={() => handleSavePassword(client.id)} className="bg-accent text-bg-base px-3 py-2 rounded-lg text-xs font-bold hover:bg-accent/90">حفظ</button>
-                   <button onClick={() => { setEditingPasswordId(null); setEditPasswordValue(''); }} className="bg-bg-base border border-border-dark text-text-secondary px-3 py-2 rounded-lg text-xs font-bold hover:text-text-primary">إلغاء</button>
-                 </div>
-               ) : (
-                 <button 
-                   onClick={() => setEditingPasswordId(client.id)}
-                   className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-bg-base hover:bg-bg-base/80 border border-border-dark text-text-primary rounded-lg text-sm font-bold transition-colors font-mono"
-                   dir="ltr"
-                 >
-                   <KeyRound size={16} /> 
-                   <span className="hidden sm:inline">تغيير الباسورد</span>
-                   <span className="sm:hidden">باسورد</span>
-                 </button>
-               )}
+               <button 
+                 onClick={() => togglePassword(client.id)}
+                 className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-bg-base hover:bg-bg-base/80 border border-border-dark text-text-primary rounded-lg text-sm font-bold transition-colors font-mono"
+                 dir="ltr"
+               >
+                 <KeyRound size={16} /> 
+                 <span className="hidden sm:inline">
+                   {revealedPasswords[client.id] ? client.plainPass : "تغيير الباسورد"}
+                 </span>
+                 <span className="sm:hidden">
+                   {revealedPasswords[client.id] ? client.plainPass : "باسورد"}
+                 </span>
+               </button>
 
                <button 
                  onClick={() => setDeleteId(client.id)}
