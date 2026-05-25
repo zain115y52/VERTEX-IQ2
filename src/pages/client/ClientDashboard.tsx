@@ -192,10 +192,10 @@ export default function ClientDashboard() {
          {/* Stats Row */}
          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
             {[
-              { title: 'إجمالي المستخدمين', value: `${data.totalUsers} / ${data.clientLimit || 0}`, icon: Users, c1: "bg-accent/10 border-accent/20 text-accent", border: 'border-border-dark' },
-              { title: 'المتصلين الآن', value: data.onlineUsers, icon: Wifi, c1: "bg-success/10 border-success/20 text-success", border: 'border-border-dark' },
-              { title: 'الاستهلاك الكلي', value: `${data.totalUsage} GB`, icon: BarChart2, c1: "bg-purple-500/10 border-purple-500/20 text-purple-400", border: 'border-border-dark' },
-              { title: 'المتبقي من الباقة', value: `${data.remainingData} GB`, icon: HardDrive, c1: "bg-blue-500/10 border-blue-500/20 text-blue-400", border: 'border-border-dark' },
+              { title: 'إجمالي المستخدمين', value: `${data?.totalUsers || 0} / ${data?.clientLimit || 0}`, icon: Users, c1: "bg-accent/10 border-accent/20 text-accent", border: 'border-border-dark' },
+              { title: 'المتصلين الآن', value: data?.onlineUsers || 0, icon: Wifi, c1: "bg-success/10 border-success/20 text-success", border: 'border-border-dark' },
+              { title: 'الاستهلاك الكلي', value: `${data?.totalUsage || 0} GB`, icon: BarChart2, c1: "bg-purple-500/10 border-purple-500/20 text-purple-400", border: 'border-border-dark' },
+              { title: 'المتبقي من الباقة', value: `${data?.remainingData || 0} GB`, icon: HardDrive, c1: "bg-blue-500/10 border-blue-500/20 text-blue-400", border: 'border-border-dark' },
             ].map((stat, i) => (
               <div key={i} className={`bg-bg-card rounded-xl p-5 sm:p-6 border ${stat.border}`}>
                  <div className="flex justify-between items-start mb-4">
@@ -230,14 +230,15 @@ export default function ClientDashboard() {
                   </thead>
                   <tbody className="divide-y divide-border-dark bg-bg-card">
                      {(data?.usersList || []).map((u: any, idx: number) => {
-                       const usageGbNum = Number(u.usageGb) || 0;
+                       if (!u) return null;
+                       const usageGbNum = Number(u?.usageGb) || 0;
                        return (
-                       <tr key={idx} className="hover:bg-white/5 transition-colors group">
+                       <tr key={idx || u?.id} className="hover:bg-white/5 transition-colors group">
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-text-primary text-xs sm:text-[13px]" dir="ltr">
                              <div className="flex flex-col gap-1">
                                <div className="flex items-center gap-2">
-                                 <span className="font-mono text-text-secondary">{u.username}</span>
-                                 {editingUserId === u.id ? (
+                                 <span className="font-mono text-text-secondary">{u?.username || 'Unknown'}</span>
+                                 {editingUserId === u?.id ? (
                                    <div className="flex items-center gap-1">
                                      <input
                                        type="text"
@@ -246,10 +247,10 @@ export default function ClientDashboard() {
                                        className="bg-bg-base border border-border-dark text-text-primary text-xs px-2 py-1 rounded w-32 focus:outline-none focus:border-primary"
                                        placeholder="تسمية (اختياري)"
                                        autoFocus
-                                       onKeyDown={(e) => { if (e.key === 'Enter') handleSaveDisplayName(u.id); }}
+                                       onKeyDown={(e) => { if (e.key === 'Enter') handleSaveDisplayName(u?.id); }}
                                      />
                                      <button 
-                                       onClick={() => handleSaveDisplayName(u.id)}
+                                       onClick={() => handleSaveDisplayName(u?.id)}
                                        className="p-1 text-success hover:bg-success/20 rounded transition-colors"
                                        title="حفظ"
                                      >
@@ -265,22 +266,22 @@ export default function ClientDashboard() {
                                    </div>
                                  ) : (
                                    <div className="flex items-center gap-2">
-                                     {u.displayName && (
+                                     {u?.displayName && (
                                        <span className="bg-bg-base border border-border-dark px-2 py-0.5 rounded text-primary font-bold text-[10px]">
-                                         {u.displayName}
+                                         {u?.displayName}
                                        </span>
                                      )}
                                      <button
                                        onClick={() => {
-                                         setEditingUserId(u.id);
-                                         setEditDisplayName(u.displayName || "");
+                                         setEditingUserId(u?.id);
+                                         setEditDisplayName(u?.displayName || "");
                                        }}
                                        className="p-1 text-text-secondary hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
                                        title="تعديل اسم الزبون"
                                      >
                                        <Edit2 size={13} />
                                      </button>
-                                     {u.v2rayLink && (
+                                     {u?.v2rayLink && (
                                        <>
                                          <button
                                            onClick={() => {
@@ -291,7 +292,7 @@ export default function ClientDashboard() {
                                            className="p-1 text-text-secondary hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
                                            title="نسخ رابط V2Ray"
                                          >
-                                           {copiedV2RayId === u.id ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                                           {copiedV2RayId === u?.id ? <Check size={13} className="text-success" /> : <Copy size={13} />}
                                          </button>
                                          <button
                                            onClick={() => {
@@ -309,7 +310,7 @@ export default function ClientDashboard() {
                                </div>
                              </div>
                           </td>
-                          <td className="px-4 sm:px-6 py-3 sm:py-4 text-text-secondary text-[11px] sm:text-xs">{u.serverName}</td>
+                          <td className="px-4 sm:px-6 py-3 sm:py-4 text-text-secondary text-[11px] sm:text-xs">{u?.serverName || 'Unknown'}</td>
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-center font-mono text-xs sm:text-[13px]">
                              <div className="flex flex-col gap-1 items-center">
                                <span className="text-text-primary font-bold">
@@ -322,16 +323,16 @@ export default function ClientDashboard() {
                           </td>
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-center font-mono text-xs sm:text-[13px]">
                              <span className="text-success font-bold">
-                                {u.remainingGb} GB
+                                {u?.remainingGb || 0} GB
                              </span>
                           </td>
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-center font-mono">
                              <div className="flex items-center justify-center gap-1.5 text-text-secondary text-xs sm:text-[13px]">
-                                <Clock size={14} /> <span>{u.daysRatio}</span>
+                                <Clock size={14} /> <span>{u?.daysRatio || '0/0'}</span>
                              </div>
                           </td>
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-center">
-                                 { u.isActive === false ? (
+                                 { u?.isActive === false ? (
                                     <span className="inline-flex items-center gap-1.5 text-red-500 font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
                                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500"></div>
                                        Disabled
@@ -341,7 +342,7 @@ export default function ClientDashboard() {
                                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-400"></div>
                                        New
                                     </span>
-                                 ) : u.isOnline ? (
+                                 ) : u?.isOnline ? (
                                     <span className="inline-flex items-center gap-1.5 text-success font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
                                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-success shadow-[0_0_8px_var(--color-success)]"></div>
                                        Active (Online)
@@ -358,10 +359,11 @@ export default function ClientDashboard() {
                                    <input 
                                      type="checkbox" 
                                      className="sr-only peer" 
-                                     checked={u.isActive !== false} 
+                                     checked={u?.isActive !== false} 
                                      onChange={async (e) => {
+                                        if(!u?.id) return;
                                         const newVal = e.target.checked;
-                                        setData((prev: any) => ({ ...prev, usersList: prev.usersList.map((ul: any) => ul.id === u.id ? { ...ul, isActive: newVal } : ul) }));
+                                        setData((prev: any) => ({ ...prev, usersList: (prev?.usersList || []).map((ul: any) => ul?.id === u.id ? { ...ul, isActive: newVal } : ul) }));
                                         try {
                                            await fetch(`/api/client/users/${u.id}/toggle`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ enable: newVal }) });
                                            fetchDashboard();
